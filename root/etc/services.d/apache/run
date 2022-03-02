@@ -1,0 +1,4 @@
+#!/usr/bin/with-contenv sh
+
+/usr/local/bin/run.sh
+
