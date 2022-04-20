@@ -20,12 +20,13 @@ vendor/
 .LSOverride
 .Trashes
 
-# Ignore test/build output directories
+# Ignore test/build output directories/files
 coverage/*
 build/*
 bin/*
 test/*
 dist/*
+scanresults
 
 # Ignore the node_modules directory
 web/node_modules

@@ -1,7 +1,11 @@
 TOPDIR=$(PWD)
 
-.PHONY: all build run
+.PHONY: all build run scan clean
 all: build run
+
+scan:
+    trivy image --severity HIGH,CRITICAL \
+    deb-wordpress:latest > scanresults
 
 run: build
 	docker run -d \

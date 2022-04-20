@@ -19,7 +19,6 @@ RUN set -eux; \
 # Ghostscript is required for rendering PDF previews
 		ghostscript \
 		mariadb-server \
-		vim \
 	; \
 	rm -rf /var/lib/apt/lists/*
 
@@ -106,7 +105,7 @@ RUN set -eux; \
 	find /etc/apache2 -type f -name '*.conf' -exec sed -ri 's/([[:space:]]*LogFormat[[:space:]]+"[^"]*)%h([^"]*")/\1%a\2/g' '{}' +
 
 
-ENV WORDPRESS_VERSION 5.9.1
+ENV WORDPRESS_VERSION 5.9.3
 ENV WORDPRESS_SHA1 15746f848cd388e270bae612dccd0c83fa613259
 ENV MARIADB_ROOT_PW root
 
@@ -134,6 +133,11 @@ RUN set -ex; \
 	echo "mysql -e 'SET PASSWORD FOR \"root\"@\"localhost\" = PASSWORD(\"${MARIADB_ROOT_PW}\");'" >> /tmp/config && \
 	bash /tmp/config && \
 	rm -f /tmp/config && \
+	apt -y autoremove && \
+    apt -y autoclean && \
+	apt-get --yes --allow-downgrades --allow-remove-essential --allow-change-held-packages --purge remove \
+    make patch curl && \
+    rm -rf /tmp/* /var/lib/apt/lists/* /var/tmp/* && \
 	touch /.firstrun
 
 VOLUME /content
