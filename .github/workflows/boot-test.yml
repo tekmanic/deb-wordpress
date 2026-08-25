@@ -10,7 +10,7 @@ jobs:
 
       - name: Build Image
         run: |
-          docker build -t deb-wordpress:test projects/deb-wordpress/
+          docker build -t deb-wordpress:test .
 
       - name: Run Container
         run: |
