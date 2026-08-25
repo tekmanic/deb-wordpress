@@ -1,19 +1,50 @@
-FROM php:apache-bullseye
+FROM php:apache-trixie AS builder
+
+# Set working directory for build
+WORKDIR /build
+
+# Install build dependencies
+RUN set -eux; \
+	apt-get update && \
+	apt-get install -y --no-install-recommends gcc make curl && \
+	rm -rf /var/lib/apt/lists/*
+
+# Download source files for nitro v0.8.1
+RUN set -eux; \
+	curl -sSLf https://git.vuxu.org/nitro/plain/nitro.c?h=v0.8.1 -o nitro.c && \
+	curl -sSLf https://git.vuxu.org/nitro/plain/nitro.h?h=v0.8.1 -o nitro.h && \
+	curl -sSLf https://git.vuxu.org/nitro/plain/nitroctl.c?h=v0.8.1 -o nitroctl.c
+
+# Compile binaries
+# Using the flags from the Makefile: -Os -Wall -Wno-unused-parameter -Wextra -Wwrite-strings -Wno-string-plus-int
+RUN gcc -Os -Wall -Wno-unused-parameter -Wextra -Wwrite-strings -Wno-string-plus-int \
+	-o nitro nitro.c && \
+	gcc -Os -Wall -Wno-unused-parameter -Wextra -Wwrite-strings -Wno-string-plus-int \
+	-o nitroctl nitroctl.c -lm
+
+# Final Stage
+FROM php:apache-trixie
 LABEL org.opencontainers.image.authors="tekmanic"
 
 # environment settings
 ARG DEBIAN_FRONTEND="noninteractive"
 
-# set version for s6 overlay
-ARG OVERLAY_VERSION="2.2.0.3"
-ARG OVERLAY_ARCH="x86"
+# install gosu
+RUN set -eux; \
+	apt-get update && \
+	apt-get install -y --no-install-recommends gosu && \
+	rm -rf /var/lib/apt/lists/*
 
-# add s6 overlay
-ADD https://github.com/just-containers/s6-overlay/releases/download/v${OVERLAY_VERSION}/s6-overlay-${OVERLAY_ARCH}.tar.gz /tmp
+# Copy compiled binaries from builder
+COPY --from=builder /build/nitro /bin/nitro
+COPY --from=builder /build/nitroctl /bin/nitroctl
+
+# Fix permissions for Apache logs and set ServerName
+RUN chown -R www-data:www-data /var/log/apache2 && \
+    echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 # persistent dependencies
 RUN set -eux; \
-	tar -C / -xf /tmp/s6-overlay-${OVERLAY_ARCH}.tar.gz && \
 	apt-get update; \
 	apt-get install -y --no-install-recommends \
 # Ghostscript is required for rendering PDF previews
@@ -25,13 +56,10 @@ RUN set -eux; \
 # install the PHP extensions we need (https://make.wordpress.org/hosting/handbook/handbook/server-environment/#php-extensions)
 RUN set -ex; \
 	\
-	savedAptMark="$(apt-mark showmanual)"; \
-	\
-	apt-get update; \
 	curl -sSLf \
-        -o /usr/local/bin/install-php-extensions \
-        https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions && \
-    chmod +x /usr/local/bin/install-php-extensions && \
+          -o /usr/local/bin/install-php-extensions \
+          https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions && \
+	chmod +x /usr/local/bin/install-php-extensions && \
 	install-php-extensions \
 		imagick \
 		bcmath \
@@ -44,25 +72,11 @@ RUN set -ex; \
 	curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
 	chmod +x wp-cli.phar && \
 	mv wp-cli.phar /usr/local/bin/wp; \
-	\
-# reset apt-mark's "manual" list so that "purge --auto-remove" will remove all build dependencies
-	apt-mark auto '.*' > /dev/null; \
-	apt-mark manual $savedAptMark; \
-	ldd "$(php -r 'echo ini_get("extension_dir");')"/*.so \
-		| awk '/=>/ { print $3 }' \
-		| sort -u \
-		| xargs -r dpkg-query -S \
-		| cut -d: -f1 \
-		| sort -u \
-		| xargs -rt apt-mark manual; \
-	\
-	apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false; \
 	rm -rf /var/lib/apt/lists/*
 
 # set recommended PHP.ini settings
 # see https://secure.php.net/manual/en/opcache.installation.php
 RUN set -eux; \
-	docker-php-ext-enable opcache; \
 	{ \
 		echo 'opcache.memory_consumption=128'; \
 		echo 'opcache.interned_strings_buffer=8'; \
@@ -86,7 +100,8 @@ RUN { \
 	} > /usr/local/etc/php/conf.d/error-logging.ini
 
 RUN set -eux; \
-	a2enmod rewrite expires; \
+	a2enmod rewrite expires headers; \
+	a2enconf security; \
 	\
 # https://httpd.apache.org/docs/2.4/mod/mod_remoteip.html
 	a2enmod remoteip; \
@@ -104,10 +119,15 @@ RUN set -eux; \
 # (replace all instances of "%h" with "%a" in LogFormat)
 	find /etc/apache2 -type f -name '*.conf' -exec sed -ri 's/([[:space:]]*LogFormat[[:space:]]+"[^"]*)%h([^"]*")/\1%a\2/g' '{}' +
 
+# Disable dangerous PHP functions
+RUN { \
+    echo 'disable_functions = exec,passthru,shell_exec,system,proc_open,popen,curl_multi_exec,parse_ini_file,show_source'; \
+} > /usr/local/etc/php/conf.d/security-hardening.ini
 
-ENV WORDPRESS_VERSION 5.9.3
-ENV WORDPRESS_SHA1 cab576e112c45806c474b3cbe0d1263a2a879adf
-ENV MARIADB_ROOT_PW root
+
+ENV WORDPRESS_VERSION=7.0.2
+ENV WORDPRESS_SHA1=af066c3e6a958f20572e3161805bd622a042f2c0
+ENV MARIADB_ROOT_PW=root
 
 RUN set -ex; \
 	curl -o wordpress.tar.gz -fSL "https://wordpress.org/wordpress-${WORDPRESS_VERSION}.tar.gz"; \
@@ -123,31 +143,25 @@ RUN set -ex; \
 		mkdir "wp-content/$dir"; \
 	done; \
 	chown -R www-data:www-data wp-content; \
-	chmod -R 777 wp-content && \
+	chmod -R 755 wp-content && \
 	sed -i 's/^\(bind-address\s.*\)/# \1/' /etc/mysql/my.cnf && \
-	echo "mysqld_safe &" > /tmp/config && \
-	echo "mysqladmin --silent --wait=30 ping || exit 1" >> /tmp/config && \
-	echo "mysql -e 'CREATE USER \"root\"@\"localhost\";'" >> /tmp/config && \
-	echo "mysql -e 'CREATE DATABASE wordpress;'" >> /tmp/config && \
-	echo "mysql -e 'GRANT ALL PRIVILEGES ON *.* TO \"root\"@\"localhost\" WITH GRANT OPTION;'" >> /tmp/config && \
-	echo "mysql -e 'SET PASSWORD FOR \"root\"@\"localhost\" = PASSWORD(\"${MARIADB_ROOT_PW}\");'" >> /tmp/config && \
-	bash /tmp/config && \
-	rm -f /tmp/config && \
+	chown -R mysql:mysql /var/lib/mysql && \
 	apt -y autoremove && \
-    apt -y autoclean && \
-	apt-get --yes --allow-downgrades --allow-remove-essential --allow-change-held-packages --purge remove \
-    make patch curl && \
-    rm -rf /tmp/* /var/lib/apt/lists/* /var/tmp/* && \
+	apt -y autoclean && \
+	rm -rf /tmp/* /var/lib/apt/lists/* /var/tmp/* && \
 	touch /.firstrun
 
 VOLUME /content
 
 # copy local files
 COPY root/ /
+RUN chmod -R +x /etc/nitro
+RUN chmod +x /usr/local/bin/run.sh
+RUN chmod +x /usr/local/bin/init.sh
 
-RUN chmod 777 /usr/local/bin/run.sh
+# Remove setuid/setgid bits to prevent privilege escalation
+RUN find / -xdev -perm /6000 -type f -exec chmod a-s {} +
 # ADD wp-content.tar.gz /usr/src/wordpress/
 COPY wp-config.php /usr/src/wordpress/
 
-CMD ["/init"]
-# CMD tail -f /dev/null
+CMD ["/bin/nitro", "/etc/nitro"]

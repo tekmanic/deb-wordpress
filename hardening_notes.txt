@@ -1,0 +1,5 @@
+1.  **Non-root user**: Currently, the `Dockerfile` uses `php:apache` which runs as root to start Apache, then switches to `www-data`. However, the overall container process usually starts as root.
+2.  **Filesystem Permissions**: Ensuring `/var/www/html` is only writable by `www-data` where necessary.
+3.  **Remove build-time tools**: The `Dockerfile` already has some `apt-get purge` logic.
+4.  **Read-only filesystem**: Not always possible for WP, but we can make certain parts read-only.
+5.  **Removing unnecessary packages**: Already doing some `no-install-recommends`.

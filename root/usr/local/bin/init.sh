@@ -46,6 +46,21 @@ if [[ "$1" == apache2* ]] || [ "$1" == php-fpm ]; then
 	fi
 
 	if [ ! -e index.php ] && [ ! -e wp-includes/version.php ]; then
+		# Wait for MariaDB to be ready before proceeding with WordPress initialization
+		echo "Waiting for MariaDB to be ready..."
+		max_mariadb_wait_cycles="${MARIADB_WAIT_CYCLES:-90}"
+		mariadb_wait_cycles=0
+		until mariadb-admin ping >/dev/null 2>&1; do
+			echo "MariaDB is still starting up... sleeping"
+			sleep 2
+			mariadb_wait_cycles=$((mariadb_wait_cycles + 1))
+			if [ "$mariadb_wait_cycles" -ge "$max_mariadb_wait_cycles" ]; then
+				echo >&2 "ERROR: MariaDB did not become ready after $((max_mariadb_wait_cycles * 2)) seconds"
+				exit 1
+			fi
+		done
+		echo "MariaDB is up! Proceeding with WordPress setup..."
+
 		# if the directory exists and WordPress doesn't appear to be installed AND the permissions of it are root:root, let's chown it (likely a Docker-created directory)
 		if [ "$(id -u)" = '0' ] && [ "$(stat -c '%u:%g' .)" = '0:0' ]; then
 			chown "$user:$group" .
@@ -103,7 +118,7 @@ php_value max_input_time 300
 			EOF
 			chown "$user:$group" .htaccess
 		fi
-		if [[ ! -z ${BASIC_AUTH_ENABLED} ]]; then
+		if [[ ! -z ${BASIC_AUTH_ENABLED:-} ]]; then
 			echo "BASIC AUTH ENABLED = ${BASIC_AUTH_ENABLED}"
 			sed -i 's/AllowOverride None/AllowOverride AuthConfig/g' /etc/apache2/apache2.conf
 			htpasswd -cb /.htpasswd ${ADMIN_NAME} ${ADMIN_PASSWORD}
@@ -274,7 +289,9 @@ $stderr = fopen('php://stderr', 'w');
 //   "hostname:port"
 // https://codex.wordpress.org/Editing_wp-config.php#MySQL_Sockets_or_Pipes
 //   "hostname:unix-socket-path"
-list($host, $socket) = explode(':', getenv('WORDPRESS_DB_HOST'), 2);
+$hostAndSocket = explode(':', getenv('WORDPRESS_DB_HOST'), 2);
+$host = $hostAndSocket[0] ?? 'localhost';
+$socket = $hostAndSocket[1] ?? null;
 $port = 0;
 if (is_numeric($socket)) {
 	$port = (int) $socket;
@@ -318,4 +335,5 @@ EOPHP
 fi
 
 
-rm -f /.firstrun
+# Remove the firstrun flag so this doesn't run again
+# rm -f /.firstrun

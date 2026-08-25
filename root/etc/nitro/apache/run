@@ -1,0 +1,4 @@
+#!/bin/sh
+# Apache run script for nitro
+# Apache manages its own privilege drop to www-data
+exec /usr/local/bin/run.sh

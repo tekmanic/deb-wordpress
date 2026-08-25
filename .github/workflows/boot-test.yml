@@ -1,0 +1,25 @@
+name: Boot Test
+on: [push, pull_request]
+
+jobs:
+  boot-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Image
+        run: |
+          docker build -t deb-wordpress:test projects/deb-wordpress/
+
+      - name: Run Container
+        run: |
+          docker run -d -p 80:80 --name wp-test deb-wordpress:test
+
+      - name: Wait for Boot
+        run: |
+          timeout 60s bash -c 'until curl -s localhost:80 > /dev/null; do echo "Waiting for WP..."; sleep 2; done'
+
+      - name: Validate wp-admin
+        run: |
+          curl -sI localhost/wp-admin/ | grep "200 OK" || (curl -sI localhost/wp-admin/ | grep "302 Found" && echo "Redirect OK")
