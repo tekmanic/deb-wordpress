@@ -1,0 +1,8 @@
+#!/bin/sh
+# MariaDB run script for nitro
+# Ensure the socket directory exists and is owned by mysql
+mkdir -p /run/mysqld
+chown mysql:mysql /run/mysqld
+# MariaDB usually manages its own user transition via mariadbd-safe, 
+# but we use gosu here for consistency and to ensure it doesn't run as root.
+exec gosu mysql mariadbd-safe

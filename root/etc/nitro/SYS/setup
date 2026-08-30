@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+
+# SYS/setup runs before other services
+# This handles the first-run initialization logic.
+
+# Guard: only run if .firstrun exists
+if [ ! -e /.firstrun ]; then
+    echo "System already initialized, skipping setup."
+    exit 0
+fi
+
+echo "First run detected, running pre-service setup..."
+
+# Handle /content volume persistence early.
+# Database-dependent setup is deferred to Apache startup, where MariaDB is running.
+if [ -d /content ] && [ "$(ls -A /content 2>/dev/null)" ]; then
+    echo "Copying /content to /var/www/html/wp-content"
+    cp -r /content/* /var/www/html/wp-content/
+else
+    echo "/content is empty or missing, skipping copy."
+fi
+
+echo "Pre-service setup complete; runtime initialization will continue in Apache startup."
