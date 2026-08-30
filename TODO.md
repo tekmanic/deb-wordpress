@@ -12,6 +12,6 @@
 - [x] Upgrade mysqld_safe to mariadbd-safe
 - [x] Fix "Error establishing a database connection" during setup
 - [x] Implement Docker best practices (security hardening)
-- [ ] Update GitHub Actions to include build and boot-test
-- [ ] Add GitHub "Agents" (Security Scanner & Dependabot/Update monitor)
+- [x] Update GitHub Actions to include build and boot-test
+- [x] Add GitHub "Agents" (Security Scanner & Dependabot/Update monitor)
 - [ ] Final verification and Push to origin
