@@ -1,15 +1,18 @@
 # deb-wordpress
 
-A specialized Docker image providing a Debian Bullseye-based WordPress environment with an internal MariaDB instance and automated plugin installation.
+A specialized Docker image providing a Debian Trixie-based WordPress environment with an internal MariaDB instance and automated plugin installation, powered by the Nitro init system.
 
 ## Overview
 This repository is designed for creating WordPress sandbox environments. It allows you to run multiple isolated WordPress installations in parallel without conflicts, making it ideal for development and testing.
 
 ## Key Features
+- **Modern Base:** Upgraded to Debian Trixie for the latest security and package updates.
+- **Nitro Init System:** Powered by Nitro 0.8.1 for fast, lean, and reliable service management.
 - **Integrated Database:** Includes an internal MariaDB server for zero-config startup.
 - **Automated Setup:** Uses WP-CLI for automated site installation and plugin activation.
 - **Persistent Content:** Supports Docker volumes for persisting themes, plugins, and uploads.
-- **Security:** Includes optional Basic Auth and IP restriction for protected environments.
+- **Security Hardened:** Implements PHP function restrictions and removes setuid/setgid bits to reduce attack surface.
+- **Protected Environments:** Includes optional Basic Auth and IP restriction.
 
 ## Usage
 
@@ -47,6 +50,7 @@ docker run -d \
 ### Notes
 - **Database Access:** The internal MariaDB is not exposed by default (runs on port 3306 as root/root). For production, use a separate database container.
 - **Content Persistence:** Mount a volume to `/content` to persist your custom themes, plugins, and uploads. On the first run, contents are copied to `/var/www/html/wp-content`.
+- **Init System:** This image uses Nitro to manage Apache and MariaDB, ensuring correct boot order and service reliability.
 
 ---
 If you appreciate this work, please consider buying me a beer! :D
