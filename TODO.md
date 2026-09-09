@@ -1,10 +1,10 @@
 # Project: deb-wordpress Update
 
 ## Status: In Progress
-**Branch:** `update-wordpress-7.0.2`
+**Branch:** `update-wordpress-7.1`
 
 ## Task List
-- [x] Update WordPress to version 7.0.2
+- [x] Update WordPress to version 7.1 (up from 7.0.2)
 - [x] Update README.md documentation
 - [x] Migrate from s6-overlay to nitro init system
 - [x] Replace `su-exec` with `gosu` in Dockerfile to fix build failure

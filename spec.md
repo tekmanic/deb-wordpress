@@ -48,7 +48,7 @@ Given the underlying LLM context limit (65k tokens), the project is managed usin
 ## 4. Roadmap & Validation (D - Delivery)
 
 ### Current Phase: Update & Hardening
-- [x] **WordPress Update:** Migrated to v7.0.2.
+- [x] **WordPress Update:** Migrated to v7.1 (from v7.0.2).
 - [x] **Base Image Upgrade:** Moved from Debian Bullseye $\rightarrow$ Bookworm.
 - [ ] **Security Hardening:** 
     - Implement non-root user for PHP/Apache processes.
