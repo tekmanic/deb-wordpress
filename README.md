@@ -48,10 +48,16 @@ docker run -d \
 | `ALLOWED_IP` | IP allowed to bypass Basic Auth | `` |
 
 ### Notes
+
 - **Database Access:** The internal MariaDB is not exposed by default (runs on port 3306 as root/root). For production, use a separate database container.
 - **Content Persistence:** Mount a volume to `/content` to persist your custom themes, plugins, and uploads. On the first run, contents are copied to `/var/www/html/wp-content`.
 - **Init System:** This image uses Nitro to manage Apache and MariaDB, ensuring correct boot order and service reliability.
-
+- **Non-root user**: Currently, the `Dockerfile` uses `php:apache` which runs as root to start Apache, then switches to `www-data`. However, the overall container process usually starts as root.
+- **Filesystem Permissions**: Ensuring `/var/www/html` is only writable by `www-data` where necessary.
+- **Remove build-time tools**: The `Dockerfile` already has some `apt-get purge` logic.
+- **Read-only filesystem**: Not always possible for WP, but we can make certain parts read-only.
+- **Removing unnecessary packages**: Already doing some `no-install-recommends`.
+  
 ---
 If you appreciate this work, please consider buying me a beer! :D
 [![PayPal donation](https://www.paypal.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/donate?hosted_button_id=KKQ4LNMEDVUPN)
