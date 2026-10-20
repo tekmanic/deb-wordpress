@@ -17,7 +17,7 @@ run: build
         -e ADMIN_NAME=admin \
         -e ADMIN_PASSWORD=admin \
         -e ADMIN_EMAIL=admin@domain.com \
-        -e PLUGINS='wordpress-seo acf-to-rest-api advanced-custom-fields admin-menu-editor wp-api-menus all-in-one-wp-migration elementor essential-addons-for-elementor-lite contact-form-7' \
+        -e PLUGINS='wordpress-seo advanced-custom-fields admin-menu-editor wp-api-menus all-in-one-wp-migration elementor essential-addons-for-elementor-lite contact-form-7' \
         -e TITLE='Wordpress-Title' \
         -e BASIC_AUTH_ENABLED=true \
         -e ALLOWED_IP="172.17.0.10" \
