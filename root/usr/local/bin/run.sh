@@ -62,10 +62,21 @@ EOSQL
 
 	plugins="${PLUGINS:-}"
 	if [[ -n "$plugins" ]]; then
+		# Plugin installs are non-fatal: a single bad/dead slug must not abort
+		# the whole first-run init (set -e would otherwise crash-loop the boot).
+		plugin_failures=0
 		for plugin in $plugins; do
 			echo "Installing plugin '$plugin'..."
-			su -s /bin/bash -c "wp plugin install '$plugin' --activate" www-data
+			if su -s /bin/bash -c "wp plugin install '$plugin' --activate" www-data; then
+				echo "  -> '$plugin' installed OK"
+			else
+				plugin_failures=$((plugin_failures + 1))
+				echo "  -> WARNING: plugin '$plugin' install FAILED (continuing)" >&2
+			fi
 		done
+		if [ "$plugin_failures" -gt 0 ]; then
+			echo "WARNING: $plugin_failures plugin(s) failed to install; site will start without them." >&2
+		fi
 	fi
 
 	chown -R www-data:www-data /var/www/html/wp-content
