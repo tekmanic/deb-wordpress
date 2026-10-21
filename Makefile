@@ -22,6 +22,7 @@ run: build
         -e BASIC_AUTH_ENABLED=true \
         -e ALLOWED_IP="172.17.0.10" \
         -v $(TOPDIR)/wp-content:/content \
+        -v wordpress-db:/var/lib/mysql \
         deb-wordpress:latest
 
 build:

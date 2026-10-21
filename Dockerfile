@@ -152,6 +152,11 @@ RUN set -ex; \
 	touch /.firstrun
 
 VOLUME /content
+# Persist the MariaDB data directory so the database survives container
+# recreation (docker rm + docker run). Without this, /var/lib/mysql lives in
+# the container's writable layer and is deleted when the container is removed.
+# Mount a named volume (e.g. -v wordpress-db:/var/lib/mysql) to keep it.
+VOLUME /var/lib/mysql
 
 # copy local files
 COPY root/ /
