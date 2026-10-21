@@ -31,6 +31,7 @@ docker run -d \
         -e PLUGINS='contact-form-7' \
         -e TITLE='Wordpress-Title' \
         -v wp-content:/content \
+        -v wordpress-db:/var/lib/mysql \
         deb-wordpress:latest
 ```
 
@@ -50,6 +51,7 @@ docker run -d \
 ### Notes
 
 - **Database Access:** The internal MariaDB is not exposed by default (runs on port 3306 as root/root). For production, use a separate database container.
+- **Database Persistence:** The MariaDB data lives in `/var/lib/mysql`, declared as a `VOLUME`. **Always mount a persistent volume there** (e.g. `-v wordpress-db:/var/lib/mysql`) — otherwise the database sits in the container's writable layer and is **deleted when the container is removed** (e.g. during an image rebuild / `docker rm` + `docker run`). Named volumes survive container recreation, so the site keeps its data across image updates.
 - **Content Persistence:** Mount a volume to `/content` to persist your custom themes, plugins, and uploads. On the first run, contents are copied to `/var/www/html/wp-content`.
 - **Init System:** This image uses Nitro to manage Apache and MariaDB, ensuring correct boot order and service reliability.
 - **Non-root user**: Currently, the `Dockerfile` uses `php:apache` which runs as root to start Apache, then switches to `www-data`. However, the overall container process usually starts as root.
@@ -57,7 +59,37 @@ docker run -d \
 - **Remove build-time tools**: The `Dockerfile` already has some `apt-get purge` logic.
 - **Read-only filesystem**: Not always possible for WP, but we can make certain parts read-only.
 - **Removing unnecessary packages**: Already doing some `no-install-recommends`.
-  
+
+## Database Backup & Migration
+
+The database is in the `wordpress-db` volume, so back it up before destructive operations (image rebuilds, `docker rm`):
+
+```bash
+# Dump to a file on the host (the image ships with mysqldump):
+docker exec wordpress mysqldump -uroot -proot --all-databases > wp-backup.sql
+
+# Restore into a (re)created container:
+docker exec -i wordpress mysql -uroot -proot < wp-backup.sql
+```
+
+### Migrating an existing instance (DB still in the writable layer)
+
+If a running instance predates the persistence fix (its DB is in the container's writable layer, not a volume), move it to a named volume:
+
+```bash
+# 1. Dump the existing DB from the running container
+docker exec wordpress mysqldump -uroot -proot --all-databases > /root/wp-migrate.sql
+
+# 2. Recreate the container with the new image + the DB volume
+docker rm -f wordpress
+docker run -d --name=wordpress -v wp-content:/content -v wordpress-db:/var/lib/mysql \
+    -e URL="https://your.site" -e ADMIN_NAME=admin -e ADMIN_PASSWORD=... \
+    deb-wordpress:latest
+
+# 3. After first-run init completes, restore the dump
+docker exec -i wordpress mysql -uroot -proot < /root/wp-migrate.sql
+```
+
 ---
 If you appreciate this work, please consider buying me a beer! :D
 [![PayPal donation](https://www.paypal.com/en_US/i/btn/btn_donate_SM.gif)](https://www.paypal.com/donate?hosted_button_id=KKQ4LNMEDVUPN)
