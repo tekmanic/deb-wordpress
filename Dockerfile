@@ -125,8 +125,8 @@ RUN { \
 } > /usr/local/etc/php/conf.d/security-hardening.ini
 
 
-ENV WORDPRESS_VERSION=7.1.4
-ENV WORDPRESS_SHA1=b175879c4fb2d35300f9abe1153da9b543a35a2b
+ENV WORDPRESS_VERSION=7.1.5
+ENV WORDPRESS_SHA1=f79cd80a8f8152edd88ef9be859ae765f2ec6c36
 ENV MARIADB_ROOT_PW=root
 
 RUN set -ex; \
