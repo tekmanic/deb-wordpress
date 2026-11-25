@@ -1,4 +1,8 @@
-FROM php:apache-trixie AS builder
+# Pinned to 8.5: the floating `php:apache-trixie` tag moved to PHP 8.6, where
+# imagick 3.8.1 (latest PECL) fails to compile (XtOffsetOf removed in PHP 8.6;
+# upstream fix Imagick/imagick#795 not yet released). 8.5 is also the version
+# this image has been running in production.
+FROM php:8.5-apache-trixie AS builder
 
 # Set working directory for build
 WORKDIR /build
@@ -23,7 +27,7 @@ RUN gcc -Os -Wall -Wno-unused-parameter -Wextra -Wwrite-strings -Wno-string-plus
 	-o nitroctl nitroctl.c -lm
 
 # Final Stage
-FROM php:apache-trixie
+FROM php:8.5-apache-trixie
 LABEL org.opencontainers.image.authors="tekmanic"
 
 # environment settings
@@ -125,8 +129,8 @@ RUN { \
 } > /usr/local/etc/php/conf.d/security-hardening.ini
 
 
-ENV WORDPRESS_VERSION=7.1.4
-ENV WORDPRESS_SHA1=b175879c4fb2d35300f9abe1153da9b543a35a2b
+ENV WORDPRESS_VERSION=7.1.5
+ENV WORDPRESS_SHA1=f79cd80a8f8152edd88ef9be859ae765f2ec6c36
 ENV MARIADB_ROOT_PW=root
 
 RUN set -ex; \
